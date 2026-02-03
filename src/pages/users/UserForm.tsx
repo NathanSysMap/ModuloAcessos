@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { User, UserAddress, UserContact } from '../../types';
+import { User, UserAddress, UserContact, Profile } from '../../types';
 import { UserProfilesManager } from '../../components/UserProfilesManager';
 
 export function UserForm() {
@@ -11,6 +11,8 @@ export function UserForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showProfileManager, setShowProfileManager] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState('');
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -37,10 +39,25 @@ export function UserForm() {
   });
 
   useEffect(() => {
+    loadProfiles();
     if (id) {
       loadUser(id);
     }
   }, [id]);
+
+  const loadProfiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('titulo');
+
+      if (error) throw error;
+      setProfiles(data || []);
+    } catch (error) {
+      console.error('Error loading profiles:', error);
+    }
+  };
 
   const loadUser = async (userId: string) => {
     try {
@@ -151,6 +168,13 @@ export function UserForm() {
       await supabase.from('user_contacts').insert({
         user_id: userId,
         ...contactData,
+      });
+    }
+
+    if (selectedProfileId) {
+      await supabase.from('user_profiles').insert({
+        user_id: userId,
+        profile_id: selectedProfileId,
       });
     }
 
@@ -294,16 +318,39 @@ export function UserForm() {
             </div>
 
             {!id && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Senha *</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Senha *</label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Perfil Inicial
+                  </label>
+                  <select
+                    value={selectedProfileId}
+                    onChange={(e) => setSelectedProfileId(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none"
+                  >
+                    <option value="">Selecione um perfil (opcional)</option>
+                    {profiles.map(profile => (
+                      <option key={profile.id} value={profile.id}>
+                        {profile.titulo}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Você poderá adicionar mais perfis e gerenciar permissões após salvar
+                  </p>
+                </div>
+              </>
             )}
 
             <div>

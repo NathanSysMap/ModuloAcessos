@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, User as UserIcon } from 'lucide-react';
+import { Plus, Search, Edit, User as UserIcon, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { User } from '../../types';
 
@@ -8,6 +8,7 @@ export function UsersList() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -26,6 +27,31 @@ export function UsersList() {
       console.error('Error loading users:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, nome: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário "${nome}"?`)) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      const { error: deleteError } = await supabase.from('users').delete().eq('id', id);
+
+      if (deleteError) throw deleteError;
+
+      const { error: authError } = await supabase.auth.admin.deleteUser(id);
+      if (authError) {
+        console.warn('Could not delete auth user:', authError);
+      }
+
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      alert('Erro ao excluir usuário: ' + error.message);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -115,13 +141,23 @@ export function UsersList() {
                     <td className="px-6 py-4 text-slate-600">{user.cargo}</td>
                     <td className="px-6 py-4 text-slate-600">{user.email}</td>
                     <td className="px-6 py-4 text-right">
-                      <Link
-                        to={`/users/${user.id}`}
-                        className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 transition-colors"
-                      >
-                        <Edit className="w-4 h-4" />
-                        Editar
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          to={`/users/${user.id}`}
+                          className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Editar
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(user.id, user.nome)}
+                          disabled={deletingId === user.id}
+                          className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {deletingId === user.id ? 'Excluindo...' : 'Excluir'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

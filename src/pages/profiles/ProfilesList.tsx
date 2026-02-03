@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Shield } from 'lucide-react';
+import { Plus, Search, Edit, Shield, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Profile } from '../../types';
 
@@ -8,6 +8,7 @@ export function ProfilesList() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfiles();
@@ -26,6 +27,25 @@ export function ProfilesList() {
       console.error('Error loading profiles:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, titulo: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o perfil "${titulo}"?`)) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      const { error } = await supabase.from('profiles').delete().eq('id', id);
+
+      if (error) throw error;
+      await loadProfiles();
+    } catch (error: any) {
+      console.error('Error deleting profile:', error);
+      alert('Erro ao excluir perfil: ' + error.message);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -72,9 +92,8 @@ export function ProfilesList() {
         ) : filteredProfiles.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
             {filteredProfiles.map(profile => (
-              <Link
+              <div
                 key={profile.id}
-                to={`/profiles/${profile.id}`}
                 className="p-6 border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-md transition-all"
               >
                 <div className="flex items-start gap-3 mb-3">
@@ -90,11 +109,24 @@ export function ProfilesList() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center justify-end text-slate-600 hover:text-slate-900 text-sm">
-                  <Edit className="w-4 h-4 mr-1" />
-                  Editar
+                <div className="flex items-center justify-end gap-3">
+                  <Link
+                    to={`/profiles/${profile.id}`}
+                    className="flex items-center gap-1 text-slate-600 hover:text-slate-900 text-sm transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Editar
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(profile.id, profile.titulo)}
+                    disabled={deletingId === profile.id}
+                    className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {deletingId === profile.id ? 'Excluindo...' : 'Excluir'}
+                  </button>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         ) : (
