@@ -140,35 +140,42 @@ export function UserForm() {
       throw new Error('Por favor, selecione um perfil para o usuário');
     }
 
-    const { data, error } = await supabase.rpc('create_user_with_profile', {
-      p_nome: formData.nome,
-      p_email: formData.email,
-      p_password: formData.password,
-      p_cpf: formData.cpf,
-      p_cargo: formData.cargo,
-      p_profile_id: selectedProfileId,
-      p_rua: addressData.rua || null,
-      p_numero: addressData.numero || null,
-      p_complemento: addressData.complemento || null,
-      p_bairro: addressData.bairro || null,
-      p_cidade: addressData.cidade || null,
-      p_estado: addressData.estado || null,
-      p_cep: addressData.cep || null,
-      p_telefone: contactData.telefone || null,
-      p_celular: contactData.celular || null,
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Não autenticado');
+    }
+
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`;
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        nome: formData.nome,
+        email: formData.email,
+        password: formData.password,
+        cpf: formData.cpf,
+        cargo: formData.cargo,
+        profile_id: selectedProfileId,
+        rua: addressData.rua || undefined,
+        numero: addressData.numero || undefined,
+        complemento: addressData.complemento || undefined,
+        bairro: addressData.bairro || undefined,
+        cidade: addressData.cidade || undefined,
+        estado: addressData.estado || undefined,
+        cep: addressData.cep || undefined,
+        telefone: contactData.telefone || undefined,
+        celular: contactData.celular || undefined,
+      }),
     });
 
-    if (error) {
-      console.error('RPC error:', error);
-      throw new Error(error.message || 'Erro ao criar usuário');
-    }
+    const data = await response.json();
 
-    if (!data) {
-      throw new Error('Nenhum dado retornado da função');
-    }
-
-    if (!data.success) {
-      throw new Error(data.error || 'Erro desconhecido ao criar usuário');
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Erro ao criar usuário');
     }
 
     navigate('/users');
