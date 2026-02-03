@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Shield, Plus, X, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Profile, Feature, ProfileFeature, UserFeatureOverride } from '../types';
+import { Profile, Feature } from '../types';
 
 interface UserProfilesManagerProps {
   userId: string;
@@ -17,7 +17,6 @@ interface PermissionRow extends Feature {
 export function UserProfilesManager({ userId }: UserProfilesManagerProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userProfiles, setUserProfiles] = useState<Profile[]>([]);
-  const [features, setFeatures] = useState<Feature[]>([]);
   const [permissions, setPermissions] = useState<PermissionRow[]>([]);
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,7 +41,6 @@ export function UserProfilesManager({ userId }: UserProfilesManagerProps) {
         .map(up => up.profiles)
         .filter(Boolean) as unknown as Profile[];
       setUserProfiles(userProfilesList);
-      setFeatures(featuresRes.data || []);
 
       await loadPermissions(userProfilesList, featuresRes.data || []);
     } catch (error) {

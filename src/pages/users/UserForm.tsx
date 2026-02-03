@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { User, UserAddress, UserContact, Profile } from '../../types';
+import { Profile } from '../../types';
 import { UserProfilesManager } from '../../components/UserProfilesManager';
 
 export function UserForm() {
@@ -136,50 +136,42 @@ export function UserForm() {
   };
 
   const createUser = async () => {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
+    if (!selectedProfileId) {
+      throw new Error('Por favor, selecione um perfil para o usuário');
+    }
+
+    const { data, error } = await supabase.rpc('create_user_with_profile', {
+      p_nome: formData.nome,
+      p_email: formData.email,
+      p_password: formData.password,
+      p_cpf: formData.cpf,
+      p_cargo: formData.cargo,
+      p_profile_id: selectedProfileId,
+      p_rua: addressData.rua || null,
+      p_numero: addressData.numero || null,
+      p_complemento: addressData.complemento || null,
+      p_bairro: addressData.bairro || null,
+      p_cidade: addressData.cidade || null,
+      p_estado: addressData.estado || null,
+      p_cep: addressData.cep || null,
+      p_telefone: contactData.telefone || null,
+      p_celular: contactData.celular || null,
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Failed to create user');
-
-    const userId = authData.user.id;
-
-    const { error: userError } = await supabase.from('users').insert({
-      id: userId,
-      nome: formData.nome,
-      cpf: formData.cpf,
-      cargo: formData.cargo,
-      email: formData.email,
-      foto_url: formData.foto_url || null,
-    });
-
-    if (userError) throw userError;
-
-    if (addressData.rua && addressData.numero) {
-      await supabase.from('user_addresses').insert({
-        user_id: userId,
-        ...addressData,
-      });
+    if (error) {
+      console.error('RPC error:', error);
+      throw new Error(error.message || 'Erro ao criar usuário');
     }
 
-    if (contactData.telefone || contactData.celular) {
-      await supabase.from('user_contacts').insert({
-        user_id: userId,
-        ...contactData,
-      });
+    if (!data) {
+      throw new Error('Nenhum dado retornado da função');
     }
 
-    if (selectedProfileId) {
-      await supabase.from('user_profiles').insert({
-        user_id: userId,
-        profile_id: selectedProfileId,
-      });
+    if (!data.success) {
+      throw new Error(data.error || 'Erro desconhecido ao criar usuário');
     }
 
-    navigate(`/users/${userId}`);
-    setShowProfileManager(true);
+    navigate('/users');
   };
 
   const updateUser = async (userId: string) => {
@@ -332,14 +324,15 @@ export function UserForm() {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Perfil Inicial
+                    Perfil *
                   </label>
                   <select
                     value={selectedProfileId}
                     onChange={(e) => setSelectedProfileId(e.target.value)}
+                    required
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none"
                   >
-                    <option value="">Selecione um perfil (opcional)</option>
+                    <option value="">Selecione um perfil</option>
                     {profiles.map(profile => (
                       <option key={profile.id} value={profile.id}>
                         {profile.titulo}
