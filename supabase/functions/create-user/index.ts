@@ -73,11 +73,23 @@ Deno.serve(async (req: Request) => {
     }
 
     // Check if user is super admin
-    const { data: userData, error: checkError } = await supabaseClient
-      .rpc("is_user_super_admin", { user_id: user.id })
-      .maybeSingle();
+    const { data: isSuperAdmin, error: checkError } = await supabaseClient
+      .rpc("is_user_super_admin", { user_id: user.id });
 
-    if (checkError || !userData) {
+    if (checkError) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Permission check failed: ${checkError.message}`,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!isSuperAdmin) {
       return new Response(
         JSON.stringify({
           success: false,
