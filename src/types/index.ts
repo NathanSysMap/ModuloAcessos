@@ -33,6 +33,7 @@ export interface Profile {
   id: string;
   titulo: string;
   descricao?: string;
+  is_super_admin?: boolean;
   created_at: string;
 }
 
@@ -43,6 +44,7 @@ export interface Feature {
   menu_label: string;
   menu_parent_id?: string;
   route: string;
+  icon_name?: string;
   created_at: string;
 }
 
@@ -82,5 +84,5 @@ export interface FeatureWithChildren extends Feature {
 
 export interface PermissionCheck {
   hasPermission: boolean;
-  source: 'override' | 'profile' | 'denied';
+  source: 'override' | 'profile' | 'denied' | 'super_admin';
 }

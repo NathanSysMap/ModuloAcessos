@@ -1,8 +1,36 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Home,
+  Package,
+  Users,
+  ShieldCheck,
+  Settings,
+  UserPlus,
+  ShieldPlus,
+  Plus,
+  LucideIcon,
+} from 'lucide-react';
 import { useState } from 'react';
 import { usePermissionsContext } from '../contexts/PermissionsContext';
 import { FeatureWithChildren } from '../types';
+
+const iconMap: Record<string, LucideIcon> = {
+  home: Home,
+  package: Package,
+  users: Users,
+  'shield-check': ShieldCheck,
+  settings: Settings,
+  'user-plus': UserPlus,
+  'shield-plus': ShieldPlus,
+  plus: Plus,
+};
+
+function getIcon(iconName?: string): LucideIcon | null {
+  if (!iconName) return null;
+  return iconMap[iconName] || null;
+}
 
 export function Sidebar() {
   const { menuItems } = usePermissionsContext();
@@ -24,6 +52,7 @@ export function Sidebar() {
     const isActive = location.pathname === item.route;
     const isExpanded = expandedItems.has(item.id);
     const paddingLeft = level > 0 ? `${(level * 1.5) + 1}rem` : '1rem';
+    const IconComponent = getIcon(item.icon_name);
 
     return (
       <div key={item.id}>
@@ -33,7 +62,10 @@ export function Sidebar() {
             className="w-full flex items-center justify-between py-3 text-sm hover:bg-slate-100 transition-colors"
             style={{ paddingLeft, paddingRight: '1rem' }}
           >
-            <span className="font-medium text-slate-700">{item.menu_label}</span>
+            <div className="flex items-center gap-3">
+              {IconComponent && <IconComponent className="w-4 h-4 text-slate-600" />}
+              <span className="font-medium text-slate-700">{item.menu_label}</span>
+            </div>
             {isExpanded ? (
               <ChevronDown className="w-4 h-4 text-slate-500" />
             ) : (
@@ -43,11 +75,12 @@ export function Sidebar() {
         ) : (
           <Link
             to={item.route}
-            className={`block py-3 text-sm hover:bg-slate-100 transition-colors ${
+            className={`flex items-center gap-3 py-3 text-sm hover:bg-slate-100 transition-colors ${
               isActive ? 'bg-slate-200 text-slate-900 font-medium' : 'text-slate-700'
             }`}
             style={{ paddingLeft, paddingRight: '1rem' }}
           >
+            {IconComponent && <IconComponent className={`w-4 h-4 ${isActive ? 'text-slate-900' : 'text-slate-600'}`} />}
             {item.menu_label}
           </Link>
         )}

@@ -8,12 +8,43 @@ export function usePermissions() {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [menuItems, setMenuItems] = useState<FeatureWithChildren[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     if (user) {
+      checkSuperAdmin();
       loadPermissions();
     }
   }, [user]);
+
+  const checkSuperAdmin = async () => {
+    if (!user) return;
+
+    try {
+      const { data: userProfiles } = await supabase
+        .from('user_profiles')
+        .select('profile_id')
+        .eq('user_id', user.id);
+
+      if (!userProfiles || userProfiles.length === 0) {
+        setIsSuperAdmin(false);
+        return;
+      }
+
+      const profileIds = userProfiles.map(up => up.profile_id);
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('is_super_admin')
+        .in('id', profileIds);
+
+      const hasSuperAdmin = profiles?.some(p => p.is_super_admin) || false;
+      setIsSuperAdmin(hasSuperAdmin);
+    } catch (error) {
+      console.error('Error checking super admin status:', error);
+      setIsSuperAdmin(false);
+    }
+  };
 
   const loadPermissions = async () => {
     if (!user) return;
@@ -46,6 +77,10 @@ export function usePermissions() {
 
   const checkPermission = async (featureId: string): Promise<PermissionCheck> => {
     if (!user) return { hasPermission: false, source: 'denied' };
+
+    if (isSuperAdmin) {
+      return { hasPermission: true, source: 'super_admin' };
+    }
 
     try {
       const { data: override } = await supabase
@@ -116,7 +151,24 @@ export function usePermissions() {
   };
 
   const hasPermission = async (route: string): Promise<boolean> => {
-    const feature = features.find(f => f.route === route);
+    if (isSuperAdmin) return true;
+
+    let feature = features.find(f => f.route === route);
+
+    if (!feature) {
+      const routeParts = route.split('/').filter(Boolean);
+
+      if (routeParts.length > 1 && routeParts[routeParts.length - 1].match(/^[a-f0-9-]+$/)) {
+        const basePath = '/' + routeParts.slice(0, -1).join('/');
+        feature = features.find(f => f.route === basePath);
+      }
+
+      if (!feature) {
+        const parentPath = route.split('/').slice(0, -1).join('/') || '/';
+        feature = features.find(f => f.route === parentPath);
+      }
+    }
+
     if (!feature) return false;
 
     const permission = await checkPermission(feature.id);
@@ -127,6 +179,7 @@ export function usePermissions() {
     features,
     menuItems,
     loading,
+    isSuperAdmin,
     checkPermission,
     hasPermission,
     refreshPermissions: loadPermissions,
