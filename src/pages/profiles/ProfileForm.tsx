@@ -18,10 +18,13 @@ export function ProfileForm() {
   });
 
   useEffect(() => {
-    loadFeatures();
-    if (id) {
-      loadProfile(id);
-    }
+    const loadData = async () => {
+      const loadedFeatures = await loadFeatures();
+      if (id && loadedFeatures.length > 0) {
+        await loadProfile(id, loadedFeatures);
+      }
+    };
+    loadData();
   }, [id]);
 
   const loadFeatures = async () => {
@@ -32,21 +35,26 @@ export function ProfileForm() {
         .order('nome');
 
       if (error) throw error;
-      setFeatures(data || []);
+
+      const featuresData = data || [];
+      setFeatures(featuresData);
 
       if (!id) {
         const initialPermissions: Record<string, boolean> = {};
-        (data || []).forEach(feature => {
+        featuresData.forEach(feature => {
           initialPermissions[feature.id] = false;
         });
         setPermissions(initialPermissions);
       }
+
+      return featuresData;
     } catch (err) {
       console.error('Error loading features:', err);
+      return [];
     }
   };
 
-  const loadProfile = async (profileId: string) => {
+  const loadProfile = async (profileId: string, featuresData: Feature[]) => {
     try {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -69,7 +77,7 @@ export function ProfileForm() {
       if (featuresError) throw featuresError;
 
       const permissionsMap: Record<string, boolean> = {};
-      features.forEach(feature => {
+      featuresData.forEach(feature => {
         const pf = profileFeatures?.find(pf => pf.feature_id === feature.id);
         permissionsMap[feature.id] = pf?.allowed || false;
       });
